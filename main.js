@@ -50,7 +50,7 @@ ipcMain.handle(
 
     const files = await getAllImageFiles(inputFolder)
 
-    let copied = 0
+    let moved = 0
     let skipped = 0
     let errors = []
 
@@ -73,16 +73,8 @@ ipcMain.handle(
           path.basename(file),
         )
 
-        const originalStats = await fs.stat(file)
-
-        await fs.copyFile(file, destinationFile)
-
-        await fs.utimes(
-          destinationFile,
-          originalStats.atime,
-          originalStats.mtime,
-        )
-        copied++
+        await fs.rename(file, destinationFile)
+        moved++
       } catch (error) {
         errors.push({
           file,
@@ -93,13 +85,18 @@ ipcMain.handle(
 
     return {
       totalImagesFound: files.length,
-      copied,
+      moved,
       skipped,
       errors,
     }
   },
 )
-
+function sanitizeFolderName(name) {
+  return String(name || "")
+    .replace(/[\/\\:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+}
 async function getAllImageFiles(folder) {
   let results = []
 
@@ -175,8 +172,8 @@ function buildFolderName(date) {
   const dd = String(date.getDate()).padStart(2, "0")
   const yyyy = String(date.getFullYear())
 
-  const dateCode = `${mm}${dd}${yyyy}`
-  const feast = getFeastForDate(date)
+  const dateCode = `${mm}-${dd}-${yyyy}`
+  const feast = sanitizeFolderName(getFeastForDate(date))
 
   if (feast) {
     return `${dateCode} - ${feast}`
